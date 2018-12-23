@@ -2,10 +2,13 @@
 # -*- coding: utf-8 -*-
 from lxml import etree, html
 from bs4 import BeautifulSoup
-import requests, json
+import requests
+import json
 import re
 import urllib
 import numpy
+import datetime
+import time
 
 def get_hiddenvalue(url):
     result = requests.get(url)
@@ -44,7 +47,7 @@ def getlotterydata(url, name, nchoice):
     if startyear[0]=='5' and startyear[1]=='3' and startyear[2]=='9':
         startyear = startyear[3] + startyear[4] + startyear[5] + startyear[6]
     data = []
-    for year in range(int(startyear), 2018):
+    for year in range(int(startyear), 2019):
         url = transformyear(url, year)
         result = requests.post(url)
         result.encoding = 'utf8'
@@ -53,13 +56,18 @@ def getlotterydata(url, name, nchoice):
         # y = []
         # for i in range(0, len(Table)):
         #     y.append(int(Table[i].select('p').text))
+        if name == "three_star":
+            Table = soup.find_all("span")
+            Index = soup.find_all('d')
+        else:
+            Table = soup.find_all("ul", class_="history_ball")
+            Index = soup.find_all('span', style="font-size:18px; color:#fb4202; font-weight:bold;")
         
-        Table = soup.find_all("ul", class_="history_ball")
-        Index = soup.find_all('span', style="font-size:18px; color:#fb4202; font-weight:bold;")
+        
         print(len(Index))
         #print(Table[0].select('a')[0].text)
         
-        for i in range(len(Table)):
+        for i in range(len(Index)):
             y = []
             y.append(int(Index[i].text))
             start = 0
@@ -68,7 +76,10 @@ def getlotterydata(url, name, nchoice):
                 start = nchoice
                 end = start + nchoice
             for j in range(start, end):
-                y.append(int(Table[i].select('a')[j].text))
+                if name == "three_star":
+                    y.append(int(Table[j + (i*nchoice) + 1].text))
+                else:
+                    y.append(int(Table[i].select('a')[j].text))
             data.append(y)
 
         # for i in range(2,len(Table)):
@@ -80,6 +91,15 @@ def getlotterydata(url, name, nchoice):
 
 
     sort = sorted(data, key=getkey)
-    numpy.savetxt(name+".csv", sort, delimiter = ',')
+    numpy.savetxt(datetime.date.today().strftime("%Y%m%d") + "_" +name + ".csv", sort, delimiter = ',')
     #print(sort)
+
+def Get_Three_Star_Data(url):
+    data = []
+    startyear = "".join(re.findall(r'\d+', url))
+    for year in range(int(startyear), 2019):
+        url = transformyear(url, year)
+        result = requests.post(url)
+        result.encoding = 'utf8'
+        soup = BeautifulSoup(result.text, "lxml")
 
